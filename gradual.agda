@@ -66,9 +66,9 @@ data _⊢_ : Context → Ty → Set where
     [_·_]_ : ∀ {Γ T1 T11 T12 T2}
         → Γ ⊢ T1
         → Γ ⊢ T2
-        → fun[ T1 ]= (T11 ⇒ T12)
-        → T2 ~ T11
         → Label
+        → {fun[ T1 ]= (T11 ⇒ T12)}
+        → {T2 ~ T11}
         → Γ ⊢ T12
 
     tm-true  : ∀ {Γ} → Γ ⊢ TyBool
@@ -104,12 +104,10 @@ data _⊢C_ : Context → Ty → Set where
     ƛC_     : ∀ {Γ A B}
         → (A ∷ Γ) ⊢C B
         → Γ ⊢C (A ⇒ B)
-    [_·C_] : ∀ {Γ T1 T11 T12 T2}
+    [_·C_] : ∀ {Γ T1 T2}
+        → Γ ⊢C (T1 ⇒ T2)
         → Γ ⊢C T1
         → Γ ⊢C T2
-        → fun[ T1 ]= (T11 ⇒ T12)
-        → T2 ~ T11
-        → Γ ⊢C T12
 
     tmC-true  : ∀ {Γ} → Γ ⊢C TyBool
     tmC-false : ∀ {Γ} → Γ ⊢C TyBool
@@ -142,10 +140,24 @@ data _⊢C_ : Context → Ty → Set where
 translate : ∀ {Γ A} → Γ ⊢ A → Γ ⊢C A 
 translate (V x) = VC x
 translate (ƛ t) = ƛC (translate t)
-translate (([ t1 · t2 ] m) c l) = {!   !}
+translate (([ t1 · t2 ] l) {m} {c}) = [ (tmC-cast (translate t1) (fun-to-consistent m) l) ·C (tmC-cast (translate t2) c l) ]
 translate tm-true = tmC-true
 translate tm-false = tmC-false
 translate tm-zero = tmC-zero
 translate (tm-succ t) = tmC-succ (translate t)
 translate (tm-pred t) = tmC-pred (translate t)
 translate (tm-iszero t) = tmC-iszero (translate t)
+
+
+data NVal : ∀ {Γ} → Γ ⊢C TyNat → Set where
+    NV-Zero : ∀ {Γ} → NVal {Γ} tmC-zero
+    NV-Succ : ∀ {Γ t} → NVal t → NVal {Γ} (tmC-succ t)
+
+data Val : ∀ {Γ T} → Γ ⊢C T → Set where
+    V-True  : ∀ {Γ} → Val {Γ} tmC-true
+    V-False : ∀ {Γ} → Val {Γ} tmC-false
+    V-Nat   : ∀ {Γ t} → NVal t → Val {Γ} t
+    V-Abs   : ∀ {Γ T1 T2} {t : (T1 ∷ Γ) ⊢C T2} → Val (ƛC t)
+    V-CastFn  : {!   !}
+    V-Cast*   : {!   !}
+
